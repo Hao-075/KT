@@ -1,0 +1,61 @@
+using System;
+using System.Data.SqlClient;
+using System.Windows.Forms;
+
+namespace DuAnBanKet
+{
+    public partial class frmDangNhap : Form
+    {
+        public frmDangNhap()
+        {
+            InitializeComponent();
+        }
+
+        // Sự kiện bấm nút Đăng nhập
+        private void btnDangNhap_Click(object sender, EventArgs e)
+        {
+            using (SqlConnection conn = KetNoiDB.LayKetNoi())
+            {
+                try
+                {
+                    conn.Open(); // Mở kết nối
+                    
+                    // Câu lệnh SQL đếm số lượng tài khoản khớp với Tên và Mật khẩu
+                    string sql = "SELECT COUNT(*) FROM TaiKhoan WHERE TenDangNhap = @tk AND MatKhau = @mk";
+                    SqlCommand cmd = new SqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@tk", txtTaiKhoan.Text);
+                    cmd.Parameters.AddWithValue("@mk", txtMatKhau.Text);
+
+                    // ExecuteScalar dùng để lấy một giá trị duy nhất (ở đây là kết quả của hàm COUNT)
+                    int kiemTra = (int)cmd.ExecuteScalar();
+
+                    if (kiemTra > 0) // Nếu > 0 tức là tìm thấy tài khoản
+                    {
+                        MessageBox.Show("Đăng nhập thành công!");
+                        
+                        // Tạo đối tượng của Form Quản lý
+                        frmQuanLy fQuanLy = new frmQuanLy(); 
+                        this.Hide(); // Ẩn form đăng nhập đi
+                        fQuanLy.ShowDialog(); // Hiển thị form quản lý lên (chặn thao tác form khác)
+                        this.Show(); // Khi form quản lý đóng, hiện lại form đăng nhập
+                    }
+                    else // Nếu không khớp
+                    {
+                        MessageBox.Show("Tên đăng nhập hoặc mật khẩu sai!");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Lỗi kết nối: " + ex.Message);
+                }
+            }
+        }
+
+        // Sự kiện mở form Đăng ký
+        private void btnChuyenDangKy_Click(object sender, EventArgs e)
+        {
+            frmDangKy fDangKy = new frmDangKy();
+            fDangKy.ShowDialog(); // Mở form đăng ký
+        }
+    }
+}

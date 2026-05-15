@@ -1,0 +1,59 @@
+using System;
+using System.Data.SqlClient; // Khai báo thư viện ADO.NET
+using System.Windows.Forms;
+
+namespace DuAnBanKet
+{
+    public partial class frmDangKy : Form
+    {
+        public frmDangKy()
+        {
+            InitializeComponent(); // Hàm mặc định khởi tạo giao diện
+        }
+
+        // Sự kiện khi bấm nút Đăng ký
+        private void btnDangKy_Click(object sender, EventArgs e)
+        {
+            // Kiểm tra xem người dùng có để trống thông tin không (If-else dùng để rẽ nhánh điều kiện)
+            if (txtTaiKhoan.Text == "" || txtMatKhau.Text == "")
+            {
+                // Hiển thị thông báo nếu để trống
+                MessageBox.Show("Vui lòng nhập đầy đủ thông tin!"); 
+                return; // Dừng hàm lại tại đây, không chạy code phía dưới nữa
+            }
+
+            // Sử dụng khối using để tự động đóng kết nối sau khi dùng xong, giúp giải phóng bộ nhớ
+            using (SqlConnection conn = KetNoiDB.LayKetNoi())
+            {
+                try
+                {
+                    conn.Open(); // Mở kết nối với CSDL
+
+                    // Tạo câu lệnh SQL để thêm dữ liệu (INSERT). Dùng tham số @tk, @mk để chống SQL Injection (bảo mật)
+                    string sql = "INSERT INTO TaiKhoan (TenDangNhap, MatKhau) VALUES (@tk, @mk)";
+                    
+                    // SqlCommand dùng để thực thi câu lệnh SQL
+                    SqlCommand cmd = new SqlCommand(sql, conn);
+                    
+                    // Gán giá trị từ Textbox vào các tham số trong câu lệnh SQL
+                    cmd.Parameters.AddWithValue("@tk", txtTaiKhoan.Text);
+                    cmd.Parameters.AddWithValue("@mk", txtMatKhau.Text);
+
+                    // ExecuteNonQuery dùng cho lệnh INSERT, UPDATE, DELETE. Nó trả về số dòng bị ảnh hưởng.
+                    int ketQua = cmd.ExecuteNonQuery();
+
+                    // Nếu số dòng ảnh hưởng > 0 tức là đã thêm thành công
+                    if (ketQua > 0)
+                    {
+                        MessageBox.Show("Đăng ký thành công!");
+                        this.Close(); // Đóng form đăng ký, quay về form trước đó
+                    }
+                }
+                catch (Exception ex) // Bắt lỗi nếu có (ví dụ: trùng tên đăng nhập - do gài Primary Key ở SQL)
+                {
+                    MessageBox.Show("Lỗi: Tên đăng nhập đã tồn tại hoặc lỗi CSDL! Chi tiết: " + ex.Message);
+                }
+            } // Hết khối using, conn sẽ tự động Close()
+        }
+    }
+}

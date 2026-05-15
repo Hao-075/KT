@@ -1,0 +1,178 @@
+using System;
+using System.Data; // Thư viện chứa DataTable
+using System.Data.SqlClient;
+using System.Drawing; // Thư viện cho chức năng In ấn
+using System.Windows.Forms;
+
+namespace DuAnBanKet
+{
+    public partial class frmQuanLy : Form
+    {
+        public frmQuanLy()
+        {
+            InitializeComponent();
+        }
+
+        // Hàm này tự động chạy khi Form Quản lý vừa được mở lên
+        private void frmQuanLy_Load(object sender, EventArgs e)
+        {
+            TaiDuLieu(); // Gọi hàm tải dữ liệu lên DataGridView
+        }
+
+        // Hàm dùng để lấy dữ liệu từ SQL và hiển thị lên lưới (DataGridView) - Chữ R trong CRUD (Read)
+        private void TaiDuLieu()
+        {
+            using (SqlConnection conn = KetNoiDB.LayKetNoi())
+            {
+                // Khai báo câu lệnh lấy toàn bộ dữ liệu
+                string sql = "SELECT * FROM BangDuLieu";
+                
+                // SqlDataAdapter đóng vai trò như chiếc cầu nối, tự động lấy dữ liệu từ SQL về
+                SqlDataAdapter da = new SqlDataAdapter(sql, conn);
+                
+                // DataTable là một bảng ảo trong RAM để chứa dữ liệu vừa lấy về
+                DataTable dt = new DataTable();
+                
+                // Đổ dữ liệu từ DataAdapter vào bảng ảo DataTable
+                da.Fill(dt);
+                
+                // Gán nguồn dữ liệu của DataGridView là bảng ảo này để nó hiển thị lên giao diện
+                dgvDuLieu.DataSource = dt; 
+            }
+        }
+
+        // --- Chức năng THÊM (Create) ---
+        private void btnThem_Click(object sender, EventArgs e)
+        {
+            using (SqlConnection conn = KetNoiDB.LayKetNoi())
+            {
+                conn.Open();
+                string sql = "INSERT INTO BangDuLieu (Ma, Ten, MoTa) VALUES (@ma, @ten, @mota)";
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@ma", txtMa.Text);
+                cmd.Parameters.AddWithValue("@ten", txtTen.Text);
+                cmd.Parameters.AddWithValue("@mota", txtMoTa.Text);
+
+                try
+                {
+                    cmd.ExecuteNonQuery(); // Chạy lệnh INSERT
+                    MessageBox.Show("Thêm thành công!");
+                    TaiDuLieu(); // Làm mới lại danh sách trên giao diện
+                }
+                catch (Exception ex) { MessageBox.Show("Lỗi: " + ex.Message); }
+            }
+        }
+
+        // --- Chức năng SỬA (Update) ---
+        private void btnSua_Click(object sender, EventArgs e)
+        {
+            using (SqlConnection conn = KetNoiDB.LayKetNoi())
+            {
+                conn.Open();
+                // Lệnh UPDATE: Sửa Tên và Mô tả dựa vào Mã (Khóa chính)
+                string sql = "UPDATE BangDuLieu SET Ten = @ten, MoTa = @mota WHERE Ma = @ma";
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@ma", txtMa.Text);
+                cmd.Parameters.AddWithValue("@ten", txtTen.Text);
+                cmd.Parameters.AddWithValue("@mota", txtMoTa.Text);
+
+                cmd.ExecuteNonQuery(); // Chạy lệnh UPDATE
+                MessageBox.Show("Sửa thành công!");
+                TaiDuLieu(); // Làm mới
+            }
+        }
+
+        // --- Chức năng XÓA (Delete) ---
+        private void btnXoa_Click(object sender, EventArgs e)
+        {
+            // Xác nhận trước khi xóa
+            DialogResult kQ = MessageBox.Show("Bạn có chắc muốn xóa?", "Xác nhận", MessageBoxButtons.YesNo);
+            if (kQ == DialogResult.Yes)
+            {
+                using (SqlConnection conn = KetNoiDB.LayKetNoi())
+                {
+                    conn.Open();
+                    // Lệnh DELETE: Xóa dòng có Mã tương ứng
+                    string sql = "DELETE FROM BangDuLieu WHERE Ma = @ma";
+                    SqlCommand cmd = new SqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@ma", txtMa.Text);
+
+                    cmd.ExecuteNonQuery(); // Chạy lệnh DELETE
+                    TaiDuLieu();
+                }
+            }
+        }
+
+        // --- Chức năng TÌM KIẾM ---
+        private void btnTimKiem_Click(object sender, EventArgs e)
+        {
+            using (SqlConnection conn = KetNoiDB.LayKetNoi())
+            {
+                // Dùng LIKE để tìm kiếm gần đúng theo Tên
+                string sql = "SELECT * FROM BangDuLieu WHERE Ten LIKE @tuKhoa";
+                SqlDataAdapter da = new SqlDataAdapter(sql, conn);
+                
+                // Thêm dấu % vào 2 đầu từ khóa để tìm kiếm chuỗi chứa từ đó
+                da.SelectCommand.Parameters.AddWithValue("@tuKhoa", "%" + txtTimKiem.Text + "%");
+                
+                DataTable dt = new DataTable();
+                da.Fill(dt);
+                dgvDuLieu.DataSource = dt; // Hiển thị kết quả tìm kiếm lên lưới
+            }
+        }
+
+        // --- Sự kiện click vào DataGridView để đưa dữ liệu ngược lên TextBox ---
+        private void dgvDuLieu_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // Kiểm tra xem người dùng có click vào hàng dữ liệu hợp lệ không (chỉ số hàng >= 0)
+            if (e.RowIndex >= 0)
+            {
+                // Lấy hàng (Row) hiện tại đang được click
+                DataGridViewRow row = dgvDuLieu.Rows[e.RowIndex];
+                
+                // Gán dữ liệu từ các cột của hàng đó lên các ô nhập liệu (TextBox)
+                txtMa.Text = row.Cells["Ma"].Value.ToString();
+                txtTen.Text = row.Cells["Ten"].Value.ToString();
+                txtMoTa.Text = row.Cells["MoTa"].Value.ToString();
+            }
+        }
+
+        // --- Chức năng IN (Print) ---
+        private void btnIn_Click(object sender, EventArgs e)
+        {
+            // Gọi lệnh In của PrintDocument (bạn phải kéo component PrintDocument vào form và đặt tên printDocument1)
+            // Nó sẽ tự động kích hoạt sự kiện printDocument1_PrintPage bên dưới
+            printDocument1.Print(); 
+        }
+
+        // Sự kiện vẽ ra bản in (Vẽ nội dung cần in ra "tờ giấy")
+        private void printDocument1_PrintPage(object sender, System.Drawing.Printing.PrintPageEventArgs e)
+        {
+            // Khai báo Font chữ để in
+            Font fontTieuDe = new Font("Arial", 20, FontStyle.Bold);
+            Font fontNoiDung = new Font("Arial", 14, FontStyle.Regular);
+
+            // Vẽ tiêu đề lên tọa độ x=200, y=50 trên giấy
+            e.Graphics.DrawString("DANH SÁCH DỮ LIỆU", fontTieuDe, Brushes.Black, new PointF(200, 50));
+
+            int y = 100; // Tọa độ Y bắt đầu in danh sách
+            
+            // Vòng lặp foreach duyệt qua từng hàng trong DataGridView
+            foreach (DataGridViewRow row in dgvDuLieu.Rows)
+            {
+                // Bỏ qua hàng trống cuối cùng của DataGridView
+                if (!row.IsNewRow) 
+                {
+                    // Lấy dữ liệu từng cột ghép thành 1 chuỗi
+                    string ma = row.Cells["Ma"].Value.ToString();
+                    string ten = row.Cells["Ten"].Value.ToString();
+                    string dong = $"Mã: {ma} - Tên: {ten}";
+
+                    // Vẽ chuỗi lên giấy
+                    e.Graphics.DrawString(dong, fontNoiDung, Brushes.Black, new PointF(100, y));
+                    y += 30; // Cộng thêm 30 để hàng tiếp theo thụt xuống dưới (xuống dòng)
+                }
+            }
+        }
+    }
+}
